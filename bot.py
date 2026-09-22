@@ -6,13 +6,10 @@ from flask import Flask
 import threading
 
 load_dotenv()
-
-# C'ETAIT JETON AVANT, MAINTENANT C'EST TOKEN POUR RENDER
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
-    raise ValueError("TOKEN manquant ! Mets-le dans Render > Environment")
+    raise ValueError("TOKEN manquant !")
 
-# --- Serveur obligatoire pour Render (règle le bug No open ports) ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -20,10 +17,10 @@ def home():
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    # IMPORTANT: use_reloader=False sinon Render crash
+    app.run(host="0.0.0.0", port=port, use_reloader=False)
 
-# --- Ton système anti-spam ---
-MOTS_SPAM = ["+mo/", "rejoindre la con", "t.me/", "gagner de l'argent"]
+MOTS_SPAM = ["+mo/", "rejoindre la con", "t.me/"]
 
 async def anti_spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.text:
@@ -32,17 +29,21 @@ async def anti_spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if mot.lower() in text:
                 try:
                     await update.message.delete()
-                    await update.message.reply_text(f"🚫 Spam détecté et supprimé ! Mot: {mot}")
+                    print(f"Spam supprimé: {text}")
                     return
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Impossible de supprimer: {e}")
 
 def main():
+    print("=== Bot demarre ! ===", flush=True)
     application = Application.builder().token(TOKEN).build()
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anti_spam))
-    print("Bot démarré !")
-    application.run_polling()
-
+    # drop_pending_updates évite les conflits
+    application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+    
 if __name__ == "__main__":
-    threading.Thread(target=run_web, daemon=True).start()
+    # Lance Flask en arrière-plan
+    web_thread = threading.Thread(target=run_web, daemon=True)
+    web_thread.start()
+    print("Flask lancé", flush=True)
     main()
