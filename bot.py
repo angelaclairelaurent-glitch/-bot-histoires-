@@ -16,9 +16,7 @@ SUJETS = {
 }
 
 def make_alive_clip(image_path, duration):
-    # Effet Ken Burns = zoom lent vivant
     clip = ImageClip(image_path).set_duration(duration)
-    # Zoom de 100% a 120% sur la durée
     clip = clip.resize(lambda t: 1 + 0.15 * (t / duration))
     clip = clip.set_position(('center','center'))
     return clip
@@ -36,24 +34,22 @@ def get_images(key):
         files.append(f"i{i}.jpg")
     return files
 
+async def start(update, context):
+    await update.message.reply_text("Bot V5.1 vivant pret! Tape /video")
+
 async def video_long(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("V5 VIDEO VIVANTE en cours... 2min30, ne touche rien")
+    await update.message.reply_text("V5 VIVANTE en cours... 2min30 patiente bro")
     try:
         key = random.choice(list(SUJETS.keys()))
         txt = SUJETS[key]
-
-        # Voix ultra realiste
         ssml = f'<speak><prosody rate="-5%" pitch="-2Hz" volume="+10%">{txt.replace(".", ".<break time=\"500ms\"/>")}</prosody></speak>'
         await edge_tts.Communicate(ssml, "fr-FR-HenriNeural").save("v.mp3")
         audio = AudioFileClip("v.mp3")
-
         imgs = get_images(key)
         dur = audio.duration / len(imgs)
         base_clips = [make_alive_clip(f, dur) for f in imgs]
         video_base = concatenate_videoclips(base_clips, method="compose").set_audio(audio)
         video_base = video_base.set_position(('center','center')).resize((720,1280))
-
-        # Sous-titres TikTok en bas
         phrases = [p.strip() for p in txt.split(".") if p.strip()]
         total_chars = sum(len(p) for p in phrases)
         subs = []
@@ -67,11 +63,9 @@ async def video_long(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
             t += phrase_dur
-
         final = CompositeVideoClip([video_base] + subs, size=(720,1280))
         final.write_videofile("final.mp4", fps=20, codec='libx264', audio_codec='aac', preset='ultrafast', threads=1, logger=None)
-
-        await update.message.reply_video(video=open("final.mp4",'rb'), caption=f"V5 VIVANTE {audio.duration:.0f}s #mystere")
+        await update.message.reply_video(video=open("final.mp4",'rb'), caption=f"V5 VIVANTE {audio.duration:.0f}s")
         audio.close()
     except Exception as e:
         await update.message.reply_text(f"Erreur V5: {e}")
@@ -79,10 +73,9 @@ async def video_long(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def flask_run(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
 def bot_run():
     b=ApplicationBuilder().token(TOKEN).build()
-    b.add_handler(CommandHandler("start", lambda u,c: u.message.reply_text("V5 vivante prete /video")))
+    b.add_handler(CommandHandler("start", start))
     b.add_handler(CommandHandler("video", video_long))
-    b.add_handler(CommandHandler("vidéo", video_long))
-    b.add_handler(CommandHandler("2videos", video_long))
+    b.add_handler(CommandHandler("videos", video_long))
     b.run_polling()
 
 if __name__=="__main__":
