@@ -21,4 +21,4 @@ def bot_run():
 if __name__=="__main__":
     threading.Thread(target=flask_run, daemon=True).start()
     bot_run()
-    
+
