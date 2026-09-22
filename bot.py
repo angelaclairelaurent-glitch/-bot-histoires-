@@ -1,5 +1,9 @@
 import os, threading, random, requests
 from flask import Flask
+import PIL.Image
+if not hasattr(PIL.Image, 'ANTIALIAS'):
+    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import edge_tts
@@ -23,22 +27,21 @@ def make_alive_clip(path, duration):
 def get_images_safe():
     files=[]
     for i in range(3):
-        for _ in range(3): # 3 essais
+        for _ in range(3):
             try:
                 r=requests.get(f"https://picsum.photos/720/1280?random={random.randint(1,9999)}", timeout=20)
-                if len(r.content) > 10000: # vraie image >10ko
+                if len(r.content) > 10000:
                     open(f"i{i}.jpg","wb").write(r.content)
                     files.append(f"i{i}.jpg")
                     break
-            except:
-                continue
+            except: continue
     return files
 
 async def start(update, context):
-    await update.message.reply_text("Bot V5.2 corrige pret! Tape /video")
+    await update.message.reply_text("Bot V5.3 pret! Tape /video")
 
 async def video_long(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("V5.2 VIVANTE en cours... 2min patiente")
+    await update.message.reply_text("V5.3 VIVANTE en cours... 2min patiente bro")
     try:
         key = random.choice(list(SUJETS.keys()))
         txt = SUJETS[key]
@@ -65,10 +68,10 @@ async def video_long(update: Update, context: ContextTypes.DEFAULT_TYPE):
             t+=pd
         final = CompositeVideoClip([video_base]+subs, size=(720,1280))
         final.write_videofile("final.mp4", fps=20, codec='libx264', audio_codec='aac', preset='ultrafast', threads=1, logger=None)
-        await update.message.reply_video(video=open("final.mp4",'rb'), caption=f"V5.2 VIVANTE {audio.duration:.0f}s - {key}")
+        await update.message.reply_video(video=open("final.mp4",'rb'), caption=f"V5.3 VIVANTE {audio.duration:.0f}s - {key}")
         audio.close()
     except Exception as e:
-        await update.message.reply_text(f"Erreur V5.2: {e}")
+        await update.message.reply_text(f"Erreur V5.3: {e}")
 
 def flask_run(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
 def bot_run():
