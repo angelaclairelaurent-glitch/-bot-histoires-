@@ -3,3 +3,4 @@ python-telegram-bot
 moviepy==1.0.3
 edge-tts
 Pillow
+requests
