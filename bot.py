@@ -1,49 +1,26 @@
-import os
-from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
+import os, threading
 from flask import Flask
-import threading
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
-if not TOKEN:
-    raise ValueError("TOKEN manquant !")
+TOKEN = os.getenv("TOKEN") or os.getenv("BOT_TOKEN") or "8672527452:AAGjFUCJZYQki_hVoOQROlbtpkxpPv4gskA"
 
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "Bot en ligne !"
+    return "Bot OK"
 
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    # IMPORTANT: use_reloader=False sinon Render crash
-    app.run(host="0.0.0.0", port=port, use_reloader=False)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🔥 Ca marche bro ! Tape /histoire")
 
-MOTS_SPAM = ["+mo/", "rejoindre la con", "t.me/"]
+def run_flask():
+    app.run(host="0.0.0.0", port=10000)
 
-async def anti_spam(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message and update.message.text:
-        text = update.message.text.lower()
-        for mot in MOTS_SPAM:
-            if mot.lower() in text:
-                try:
-                    await update.message.delete()
-                    print(f"Spam supprimé: {text}")
-                    return
-                except Exception as e:
-                    print(f"Impossible de supprimer: {e}")
+def run_bot():
+    app_bot = ApplicationBuilder().token(TOKEN).build()
+    app_bot.add_handler(CommandHandler("start", start))
+    app_bot.run_polling(drop_pending_updates=True)
 
-def main():
-    print("=== Bot demarre ! ===", flush=True)
-    application = Application.builder().token(TOKEN).build()
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anti_spam))
-    # drop_pending_updates évite les conflits
-    application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-    
 if __name__ == "__main__":
-    # Lance Flask en arrière-plan
-    web_thread = threading.Thread(target=run_web, daemon=True)
-    web_thread.start()
-    print("Flask lancé", flush=True)
-    main()
+    threading.Thread(target=run_flask, daemon=True).start()
+    run_bot()
