@@ -1,10 +1,9 @@
-import os, threading, random, textwrap
+import os, threading, random, requests
 from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import edge_tts
-from moviepy.editor import AudioFileClip, ColorClip, ImageClip, CompositeVideoClip
-from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips
 
 TOKEN = os.getenv("TOKEN")
 app = Flask(__name__)
@@ -12,50 +11,51 @@ app = Flask(__name__)
 def home(): return "OK"
 
 SUJETS = [
-    """Tu ne vas jamais croire ce qui a ete decouvert a Puma Punku en Bolivie. En 1945, des archeologues trouvent des blocs de 131 tonnes. Le plus fou? Ils sont coupes au millimetre pres, avec des trous parfaits a l'interieur. Aujourd'hui meme avec nos machines laser, on aurait du mal a faire ca. Mais le plus mysterieux, c'est que ce site a 2000 ans. A l'epoque, ils n'avaient que des outils en pierre. Comment ont ils deplace 131 tonnes a 4000 metres d'altitude? Et pourquoi ce site a ete detruit en une seule nuit, comme par une explosion nucleaire? Les scientifiques n'ont toujours pas de reponse.""",
-    """Au Japon, a 25 metres sous l'ocean, il y a une pyramide que personne ne peut expliquer. On l'appelle Yonaguni. Elle fait 25 metres de haut et 100 metres de long. Decouverte en 1986 par un plongeur, elle possede des escaliers, des terrasses, et meme une tete de tortue sculptee. Les geologues disent que c'est naturel. Mais les architectes disent que c'est impossible que la nature fasse des angles a 90 degres parfaits. Si c'est humain, elle a 10000 ans. Ca veut dire qu'une civilisation avancee existait avant l'Egypte. Une civilisation qui a ete engloutie par les eaux. Atlantide etait elle au Japon?""",
-    """Gobekli Tepe en Turquie est le plus grand mystere de l'humanite. 11 000 ans. C'est 6000 ans plus vieux que les pyramides d'Egypte. C'est le premier temple jamais construit par l'homme. Mais le jour ou ils l'ont fini, ils l'ont enterre. Volontairement. Ils ont recouvert des piliers de 20 tonnes avec des tonnes de terre. Pourquoi construire pendant 1000 ans pour tout enterrer ensuite? Que cherchaient ils a cacher? Ou a proteger? Depuis sa decouverte en 1994, on a fouille seulement 5 pourcent du site. 95 pourcent est encore sous terre. Imagine ce qu'on va encore trouver."""
+{
+"text": "Au Japon, a 25 metres sous l'ocean, il y a une pyramide que personne ne peut expliquer. On l'appelle Yonaguni. Elle fait 25 metres de haut et 100 metres de long. Decouverte en 1986 par un plongeur japonais qui cherchait des requins, elle possede des escaliers parfaits, des terrasses immenses, et meme une tete de tortue sculptee dans la roche. Les geologues officiels disent que c'est naturel, que l'ocean a sculpte la roche. Mais les architectes les plus connus au monde disent que c'est impossible. La nature ne fait jamais des angles a 90 degres parfaits sur 100 metres. Et elle ne sculpte pas une tete de tortue. Si c'est humain, cette pyramide a plus de 10000 ans. Ca veut dire qu'une civilisation extremement avancee existait avant l'Egypte, avant Sumer. Une civilisation qui maitrisait la pierre, qui a ete engloutie par les eaux lors du deluge. Alors la question est, Atlantide etait elle au Japon? Et si on avait retrouve la preuve que tout ce qu'on nous apprend a l'ecole est faux?",
+"images": ["underwater pyramid", "yonaguni japan", "atlantis ruins"]
+},
+{
+"text": "Ce que je vais te dire sur Puma Punku en Bolivie va te glacer le sang. Imagine des blocs de 131 tonnes, coupes au millimetre pres. Pas un centimetre d'erreur. Avec des trous parfaits de 5 millimetres a l'interieur, comme fait avec une perceuse laser. Sauf que ce site a 2000 ans. A 4000 metres d'altitude, dans les Andes. A l'epoque, ils n'avaient que des pierres et des cordes, selon les livres d'histoire. Comment ont ils deplace 131 tonnes sans roues, sans chevaux? Et surtout, pourquoi tout le site est detruit comme si une arme surpuissante avait tout souffle en une seconde? Les pierres sont fondues par endroit, comme apres une explosion nucleaire. L'ONU a meme interdit des fouilles supplementaires. Que nous cachent ils a Puma Punku? Et si ce n'etait pas des humains qui l'ont construit?",
+"images": ["puma punku", "megalithic stone", "ancient alien ruins"]
+}
 ]
 
-def make_text_image(text, size=(720,1280)):
-    img = Image.new('RGB', size, color=(18,18,18))
-    draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 42)
-    except:
-        font = ImageFont.load_default()
-    wrapped = textwrap.fill(text, width=28)
-    bbox = draw.multiline_textbbox((0,0), wrapped, font=font, align="center")
-    w,h = bbox[2]-bbox[0], bbox[3]-bbox[1]
-    draw.multiline_text((size[0]/2 - w/2, size[1]/2 - h/2), wrapped, font=font, fill="white", align="center", stroke_width=2, stroke_fill="black")
-    img.save("txt.png")
-    return "txt.png"
+def get_imgs(kws):
+    paths=[]
+    for i,kw in enumerate(kws):
+        try:
+            r=requests.get(f"https://source.unsplash.com/720x1280/?{kw.replace(' ','%20')}", timeout=10)
+            open(f"img{i}.jpg","wb").write(r.content)
+            paths.append(f"img{i}.jpg")
+        except: pass
+    return paths if paths else ["img0.jpg"]
 
 async def start(update, context):
-    await update.message.reply_text("Bot VIRAL grave pret! Tape /2videos")
+    await update.message.reply_text("Bot 2MIN pret! Tape /2videos")
 
-async def deux(update, context):
-    await update.message.reply_text("Je fais tes 2 videos longues voix grave... 60 sec...")
+async def deux(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Je fais 2 videos LONGUES 90sec voix grave + vraies images... 3 min...")
     for i in range(2):
-        txt = random.choice(SUJETS)
-        comm = edge_tts.Communicate(txt, "fr-FR-HenriNeural", rate="-10%", pitch="-5Hz")
+        s=random.choice(SUJETS)
+        # VOIX ULTRA GRAVE ET LENTE = VIDEO PLUS LONGUE
+        comm = edge_tts.Communicate(s["text"], "fr-FR-HenriNeural", rate="-20%", pitch="-8Hz")
         await comm.save(f"v{i}.mp3")
         audio = AudioFileClip(f"v{i}.mp3")
-        fond = ColorClip(size=(720,1280), color=(18,18,18), duration=audio.duration)
-        txt_path = make_text_image(txt)
-        txt_clip = ImageClip(txt_path).set_duration(audio.duration).set_pos("center")
-        final = CompositeVideoClip([fond, txt_clip]).set_audio(audio)
+        print(f"DUREE AUDIO: {audio.duration} sec")
+        imgs = get_imgs(s["images"])
+        clips=[ImageClip(p).set_duration(audio.duration/len(imgs)).resize((720,1280)) for p in imgs]
+        final = concatenate_videoclips(clips).set_audio(audio)
         final.write_videofile(f"final{i}.mp4", fps=24, codec='libx264', audio_codec='aac', logger=None)
-        await update.message.reply_video(video=open(f"final{i}.mp4",'rb'), caption=f"VIDEO {i+1} - {txt[:100]}... #mystere #fyp")
+        await update.message.reply_video(video=open(f"final{i}.mp4",'rb'), caption=f"VIDEO {i+1} - {audio.duration:.0f} sec #mystere #fyp")
         audio.close()
 
-def flask_run(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+def flask_run(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
 def bot_run():
-    b = ApplicationBuilder().token(TOKEN).build()
-    b.add_handler(CommandHandler("start", start))
-    b.add_handler(CommandHandler("2videos", deux))
+    b=ApplicationBuilder().token(TOKEN).build()
+    b.add_handler(CommandHandler("start",start))
+    b.add_handler(CommandHandler("2videos",deux))
     b.run_polling()
-
-if __name__ == "__main__":
-    threading.Thread(target=flask_run, daemon=True).start()
+if __name__=="__main__":
+    threading.Thread(target=flask_run,daemon=True).start()
     bot_run()
