@@ -1,84 +1,89 @@
-import os, threading, random, requests
+import os, threading
 from flask import Flask
-import PIL.Image
-if not hasattr(PIL.Image, 'ANTIALIAS'):
-    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
-
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import edge_tts
-from moviepy.editor import AudioFileClip, ImageClip, concatenate_videoclips, TextClip, CompositeVideoClip
 
 TOKEN = os.getenv("TOKEN")
 app = Flask(__name__)
 @app.route('/')
-def home(): return "OK"
+def home(): return "Bot Physique-Chimie OK"
 
-SUJETS = {
-"yonaguni": "Au Japon, a 25 metres sous l'ocean, il y a une pyramide que personne ne peut expliquer. On l'appelle Yonaguni. Elle fait 25 metres de haut et 100 metres de long. Decouverte en 1986, elle possede des escaliers parfaits et des terrasses immenses. Les geologues disent que c'est naturel. Mais les architectes disent que c'est impossible. La nature ne fait jamais des angles a 90 degres parfaits. Si c'est humain, elle a plus de 10000 ans. Atlantide etait elle au Japon?",
-"pumapunku": "A Puma Punku en Bolivie, il y a des blocs de 131 tonnes, coupes au millimetre pres. Avec des trous parfaits de 5 millimetres, comme fait avec une perceuse laser. Sauf que ce site a 2000 ans. A 4000 metres d'altitude. Comment ont ils deplace 131 tonnes sans roues? Pourquoi tout le site est detruit comme si une arme surpuissante avait tout souffle? Les pierres sont fondues par endroit. Que nous cachent ils a Puma Punku?"
+COURS = {
+"meca": "🔹 MECANIQUE - Terminale\n\n1. 2e loi Newton: ΣF = m.a\n2. Chute libre: a=g=9.8 m/s², v=g.t, y=0.5.g.t²\n3. Energie: Ec=0.5.m.v², Ep=m.g.h, Em=Ec+Ep constant\n4. Satellite: v=√(g0.R²/r), T=2π√(r³/g0R²)\n\nASTUCE BAC: Toujours faire bilan des forces avant!",
+"chimie": "🔹 CHIMIE - pH et acide/base\n\npH = -log[H3O+]\nAcide fort: [H3O+]=C => pH=-logC\nBase forte: [OH-]=C => pH=14+logC\nHenderson: pH=pKa+log([base]/[acide])\nEquivalence: n_acide = n_base\n\nASTUCE: A l'équivalence acide fort/base forte pH=7",
+"optique": "🔹 ONDES\n\nλ = c.T = c/f\nE = h.f (photon)\nInterférences: Δ = kλ -> brillant, Δ=(k+0.5)λ -> sombre\nEffet Doppler: f_recue = f_émise * (v/(v±vs))",
+"elec": "🔹 ELECTRICITE\n\nLoi d'Ohm: U=R.I\nRC: Uc=E(1-exp(-t/RC)), τ=RC\nRL: I=E/R(1-exp(-tR/L)), τ=L/R\nEnergie bobine: E=0.5.L.I², condo: E=0.5.C.U²"
 }
 
-def make_alive_clip(path, duration):
-    clip = ImageClip(path).set_duration(duration)
-    clip = clip.resize(lambda t: 1 + 0.12 * (t / duration))
-    return clip.set_position('center')
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🎓 BOT BAC PHYSIQUE-CHIMIE TERMINALE\n\n"
+        "/cours - Liste des chapitres\n"
+        "/cours meca - Cours mécanique\n"
+        "/formule - Toutes les formules BAC\n"
+        "/exo meca - Exercice corrigé\n"
+        "/bac - Conseils BAC\n\n"
+        "Tape /cours pour commencer!"
+    )
 
-def get_images_safe():
-    files=[]
-    for i in range(3):
-        for _ in range(3):
-            try:
-                r=requests.get(f"https://picsum.photos/720/1280?random={random.randint(1,9999)}", timeout=20)
-                if len(r.content) > 10000:
-                    open(f"i{i}.jpg","wb").write(r.content)
-                    files.append(f"i{i}.jpg")
-                    break
-            except: continue
-    return files
+async def cours_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "📚 CHAPITRES DISPO:\n"
+            "- meca (Mécanique Newton)\n"
+            "- chimie (pH, acide/base)\n"
+            "- optique (Ondes, photon)\n"
+            "- elec (RC, RL)\n\n"
+            "Ex: /cours meca"
+        )
+        return
+    chap = context.args[0].lower()
+    if chap in COURS:
+        await update.message.reply_text(COURS[chap])
+    else:
+        await update.message.reply_text("Chapitre pas trouvé. Tape /cours")
 
-async def start(update, context):
-    await update.message.reply_text("Bot V5.3 pret! Tape /video")
+async def formule_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📝 FORMULES BAC A RETENIR PAR COEUR:\n\n"
+        "ΣF=m.a | P=m.g | Ec=½mv² | Ep=mgh\n"
+        "pH=-log[H3O+] | n=C.V | m=n.M\n"
+        "U=R.I | P=U.I | E=½CU² | τ=RC\n"
+        "λ=c/f | E=h.f | v=d/t\n\n"
+        "Tape /cours [chapitre] pour les détails"
+    )
 
-async def video_long(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("V5.3 VIVANTE en cours... 2min patiente bro")
-    try:
-        key = random.choice(list(SUJETS.keys()))
-        txt = SUJETS[key]
-        ssml = f'<speak><prosody rate="-5%" pitch="-2Hz">{txt.replace(".", ".<break time=\"400ms\"/>")}</prosody></speak>'
-        await edge_tts.Communicate(ssml, "fr-FR-HenriNeural").save("v.mp3")
-        audio = AudioFileClip("v.mp3")
-        imgs = get_images_safe()
-        if len(imgs)==0:
-            await update.message.reply_text("Erreur images, reessaie /video")
-            return
-        dur = audio.duration / len(imgs)
-        base_clips = [make_alive_clip(f, dur) for f in imgs]
-        video_base = concatenate_videoclips(base_clips, method="compose").set_audio(audio).resize((720,1280))
-        phrases = [p.strip() for p in txt.split(".") if p.strip()]
-        total_chars = sum(len(p) for p in phrases) or 1
-        subs=[]; t=0
-        for phrase in phrases:
-            pd = audio.duration * (len(phrase)/total_chars)
-            try:
-                tc = TextClip(phrase, fontsize=30, color='white', stroke_color='black', stroke_width=2, method='caption', size=(650,None), font='DejaVu-Sans-Bold')
-                tc = tc.set_position(('center',0.78), relative=True).set_duration(pd).set_start(t)
-                subs.append(tc)
-            except: pass
-            t+=pd
-        final = CompositeVideoClip([video_base]+subs, size=(720,1280))
-        final.write_videofile("final.mp4", fps=20, codec='libx264', audio_codec='aac', preset='ultrafast', threads=1, logger=None)
-        await update.message.reply_video(video=open("final.mp4",'rb'), caption=f"V5.3 VIVANTE {audio.duration:.0f}s - {key}")
-        audio.close()
-    except Exception as e:
-        await update.message.reply_text(f"Erreur V5.3: {e}")
+async def exo_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🔥 EXO TYPE BAC - MECANIQUE:\n\n"
+        "Un corps de 2kg tombe de 10m sans vitesse initiale.\n"
+        "1. Calcule Ec et Ep en haut?\n"
+        "2. Vitesse en bas?\n\n"
+        "✅ CORRIGÉ:\n"
+        "1. En haut: Ec=0, Ep=mgh=2*9.8*10=196J\n"
+        "2. En bas: Em conserve => Ec=196J\n"
+        "=> 0.5*2*v²=196 => v=14 m/s\n\n"
+        "Tape /exo chimie pour un exo chimie"
+    )
+
+async def bac_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🎯 CONSEILS BAC 2026 PHYSIQUE:\n\n"
+        "1. Toujours écrire données + formule + application\n"
+        "2. Unités obligatoires! Sans unité = 0 point\n"
+        "3. Schéma = +1 point facile\n"
+        "4. Chapitres qui tombent 90%: RC/RL, Chute, pH, Ondes\n\n"
+        "Tu veux que je t'explique un chapitre en vocal? Dis-moi lequel!"
+    )
 
 def flask_run(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
 def bot_run():
     b=ApplicationBuilder().token(TOKEN).build()
     b.add_handler(CommandHandler("start", start))
-    b.add_handler(CommandHandler("video", video_long))
-    b.add_handler(CommandHandler("videos", video_long))
+    b.add_handler(CommandHandler("cours", cours_cmd))
+    b.add_handler(CommandHandler("formule", formule_cmd))
+    b.add_handler(CommandHandler("exo", exo_cmd))
+    b.add_handler(CommandHandler("bac", bac_cmd))
     b.run_polling()
 
 if __name__=="__main__":
