@@ -1,3 +1,6 @@
 python-telegram-bot
-python-dotenv
 flask
+gtts
+moviepy
+imageio-ffmpeg
+Pillow
