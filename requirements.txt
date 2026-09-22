@@ -1,6 +1,5 @@
+Flask
 python-telegram-bot
-flask
-gtts
 moviepy==1.0.3
-imageio-ffmpeg
+edge-tts
 Pillow
